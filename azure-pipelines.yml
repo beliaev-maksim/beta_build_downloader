@@ -1,0 +1,29 @@
+
+trigger:
+  branches:
+    include:
+      - master
+  tags:
+      include:
+        - v*
+
+pool:
+  name: Ansys
+steps:
+- script: |
+   echo Start packaging Python
+   cd electron_ui
+   pyinstaller.exe ..\downloader_backend.py --distpath python_build --workpath %TEMP% --exclude-module tkinter --onefile
+  displayName: 'Build Python Exe'
+
+- script: |
+   cd electron_ui
+   electron-packager  ./ --platform=win32 --arch=x64 --electron-version=8.2.3  --out=electron_build --overwrite --ignore="^.*\.py"  --ignore="__pycache__"
+   cd ..
+   node build.js
+  displayName: 'Build Electron'
+
+- script: |
+    VERSION_TAG=`git describe --tags`
+    python "C:\GIT\upload.py" --channel="stable" --platform="windows_64"  --base-url="http://ottbld01:1337" --username="STATIC_USERNAME" --password="STATIC_PASSWORD" --path="C:\\Public_Builds"  --version="$VERSION_TAG"
+  displayName: 'upload build to server'

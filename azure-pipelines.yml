@@ -15,11 +15,14 @@ steps:
   displayName: 'Build Python Exe'
 
 - script: |
-   echo "Current working directory is %CD%"
    cd electron_ui
    echo "Current working directory is %CD%"
    npm install
    echo "Dependencies are installed"
+  displayName: 'Install Dependencies'
+
+- script: |
+   cd electron_ui
    npm run dist
   displayName: 'Build Electron'
 

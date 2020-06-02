@@ -3,9 +3,7 @@ trigger:
   branches:
     include:
       - master
-  tags:
-      include:
-        - v*
+      - refs/tags/v*
 
 pool:
   name: Ansys
@@ -19,11 +17,10 @@ steps:
 - script: |
    cd electron_ui
    electron-packager  ./ --platform=win32 --arch=x64 --electron-version=8.2.3  --out=electron_build --overwrite --ignore="^.*\.py"  --ignore="__pycache__"
-   cd ..
-   node build.js
+   npm run dist
   displayName: 'Build Electron'
 
 - script: |
-    VERSION_TAG=`git describe --tags`
-    python "C:\GIT\upload.py" --channel="stable" --platform="windows_64"  --base-url="http://ottbld01:1337" --username="STATIC_USERNAME" --password="STATIC_PASSWORD" --path="C:\\Public_Builds"  --version="$VERSION_TAG"
+    for /f "delims=" %%i in ('git describe --tags') do set VERSION_TAG=%%i
+    python "C:\GIT\upload.py" --channel="stable" --platform="windows_64"  --base-url="http://ottbld01:1337" --username="STATIC_USERNAME" --password="STATIC_PASSWORD" --path="%CD%\\dist"  --version="%VERSION_TAG:~1,50%"
   displayName: 'upload build to server'

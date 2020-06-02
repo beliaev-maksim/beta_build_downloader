@@ -15,12 +15,15 @@ steps:
   displayName: 'Build Python Exe'
 
 - script: |
+   echo "Current working directory is %CD%"
    cd electron_ui
+   echo "Current working directory is %CD%"
    npm install
+   echo "Dependencies are installed"
    npm run dist
   displayName: 'Build Electron'
 
 - script: |
     for /f "delims=" %%i in ('git describe --tags') do set VERSION_TAG=%%i
-    python "C:\GIT\upload.py" --channel="stable" --platform="windows_64"  --base-url="http://ottbld01:1337" --username="STATIC_USERNAME" --password="STATIC_PASSWORD" --path="%CD%\\dist"  --version="%VERSION_TAG:~1,50%"
+    python "C:\GIT\upload.py" --channel="stable" --platform="windows_64"  --base-url="http://ottbld01:1337" --username="STATIC_USERNAME" --password="STATIC_PASSWORD" --path="%CD%\\electron_ui\\dist"  --version="%VERSION_TAG:~1,50%"
   displayName: 'upload build to server'

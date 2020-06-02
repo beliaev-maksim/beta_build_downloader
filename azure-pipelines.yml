@@ -16,7 +16,6 @@ steps:
 
 - script: |
    cd electron_ui
-   electron-packager  ./ --platform=win32 --arch=x64 --electron-version=8.2.3  --out=electron_build --overwrite --ignore="^.*\.py"  --ignore="__pycache__"
    npm run dist
   displayName: 'Build Electron'
 

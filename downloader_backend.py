@@ -129,6 +129,13 @@ class Downloader:
         """
         try:
             self.check_and_make_directories(self.settings.install_path, self.settings.download_path)
+            if "ElectronicsDesktop" in self.settings.version or "Workbench" in self.settings.version:
+                space_required = 15
+            else:
+                space_required = 1
+            self.check_free_space(self.settings.download_path, space_required)
+            self.check_free_space(self.settings.install_path, space_required/5)
+
             self.check_process_lock()
             self.get_build_link()
             if self.settings.force_install or not self.versions_identical():
@@ -173,6 +180,18 @@ class Downloader:
                     os.makedirs(path)
                 except PermissionError:
                     raise SystemExit(f"{path} could not be created due to insufficient permissions")
+
+    @staticmethod
+    def check_free_space(path, required):
+        """
+        Verifies that enough disk space is available. Raises error if not enough space
+        :param path: path where to check
+        :param required: value that should be available on drive to pass the check
+        :return:
+        """
+        free_space = shutil.disk_usage(path).free // (2 ** 30)
+        if free_space < required:
+            raise SystemExit(f"Disk space in {path} is less than {required}Gb. This would not be enough to proceed")
 
     def check_process_lock(self):
         """

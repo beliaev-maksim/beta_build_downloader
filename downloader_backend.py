@@ -136,13 +136,15 @@ class Downloader:
         try:
             set_logger(self.logging_file)
             logging.info(f"Settings path is set to {self.settings_path}")
+
+            self.update_installation_history(status="In-Progress", details="Verifying configuration")
             self.check_and_make_directories(self.settings.install_path, self.settings.download_path)
             if "ElectronicsDesktop" in self.settings.version or "Workbench" in self.settings.version:
                 space_required = 15
             else:
                 space_required = 1
-            self.check_free_space(self.settings.download_path, space_required)
-            self.check_free_space(self.settings.install_path, space_required/5)
+            self.check_free_space(self.settings.download_path, space_required/2)
+            self.check_free_space(self.settings.install_path, space_required)
 
             self.check_process_lock()
             self.get_build_link()
@@ -586,17 +588,61 @@ class Downloader:
             raise SystemExit("Unable to extract product ID")
 
     def install_license_manager(self):
+        """
+        Install license manager and feed it with license file
+        """
         self.setup_exe = os.path.join(self.target_unpack_dir, "setup.exe")
 
         if os.path.isfile(self.setup_exe):
             install_path = os.path.join(self.settings.install_path, "ANSYS Inc")
-            command = [self.setup_exe, '-silent', '-install_dir', install_path, "-lang", "en",
+            if not os.path.isfile(self.settings.license_file):
+                raise SystemExit(f"No license file was detected under {self.settings.license_file}")
+
+            command = [self.setup_exe, '-silent', '-LM', '-install_dir', install_path, "-lang", "en",
                        "-licfilepath", self.settings.license_file]
             self.update_installation_history(status="In-Progress", details=f"Start installation")
             logging.info(f"Execute installation")
             self.subprocess_call(command)
+
+            package_build = self.parse_lm_installer_builddate()
+            installed_build = self.get_license_manager_build_date()
+            if all([package_build, installed_build]) and package_build == installed_build:
+                self.update_installation_history(status="Success", details=f"Normal completion")
+            else:
+                raise SystemExit("License Manager was not installed")
         else:
             raise SystemExit("No LicenseManager setup.exe file detected")
+
+    def parse_lm_installer_builddate(self):
+        """
+        Check build date of installation package of License Manager
+        """
+        build_file = os.path.join(self.target_unpack_dir, "builddate.txt")
+        if os.path.isfile(build_file):
+            with open(build_file) as file:
+                for line in file:
+                    if "license management center" in line.lower():
+                        lm_build_date = line.split()[-1]
+                        try:
+                            lm_build_date = int(lm_build_date)
+                            return lm_build_date
+                        except TypeError:
+                            raise SystemExit("Cannot extract build date of installation package")
+        else:
+            logging.warning("builddate.txt was not found in installation package")
+
+    def get_license_manager_build_date(self):
+        """
+        Check build date of installed License Manager
+        """
+        build_date_file = os.path.join(self.product_root_path, "lmcenter_blddate.txt")
+        with open(build_date_file) as file:
+            lm_build_date = next(file).split()[-1]
+            try:
+                lm_build_date = int(lm_build_date)
+                return lm_build_date
+            except TypeError:
+                raise SystemExit("Cannot extract build date of installed License Manager")
 
     def install_wb(self, local_lang=False):
         """
@@ -660,22 +706,27 @@ class Downloader:
         :param path:
         :return:
         """
+        def hard_remove():
+            try:
+                # try this dirty method to force remove all files in directory
+                all_files = os.path.join(path, "*.*")
+                command = ["DEL", "/F", "/Q", "/S", all_files, ">", "NUL"]
+                self.subprocess_call(command, shell=True)
+
+                command = ["rmdir", "/Q", "/S", path]
+                self.subprocess_call(command, shell=True)
+            except:
+                logging.warning("Failed to remove directory")
+
         if os.path.isdir(path):
             logging.info("Remove previous installation directory")
             try:
                 shutil.rmtree(path)
             except PermissionError:
                 logging.warning("Permission error. Try CMD")
-                try:
-                    # try this dirty method to force remove all files in directory
-                    all_files = os.path.join(path, "*.*")
-                    command = ["DEL", "/F", "/Q", "/S", all_files, ">", "NUL"]
-                    self.subprocess_call(command, shell=True)
-
-                    command = ["rmdir", "/Q", "/S", path]
-                    self.subprocess_call(command, shell=True)
-                except:
-                    logging.warning("Failed to remove directory")
+                hard_remove()
+            except FileNotFoundError:
+                hard_remove()
 
     def get_build_info_file_from_artifactory(self, url, recursion=False):
         """
@@ -894,7 +945,7 @@ def set_logger(logging_file):
         os.makedirs(work_dir)
 
     # add logging to console and log file
-    logging.basicConfig(filename=logging_file, format='%(asctime)s (%(levelname)s) %(message)s', level=logging.DEBUG,
+    logging.basicConfig(filename=logging_file, format='%(asctime)s (%(levelname)s) %(message)s', level=logging.NOTSET,
                         datefmt='%d.%m.%Y %H:%M:%S')
     logging.getLogger().addHandler(logging.StreamHandler())
 

@@ -12,7 +12,7 @@ steps:
    echo Start packaging Python
    cd electron_ui
    pyinstaller.exe ..\downloader_backend.py --distpath python_build --workpath %TEMP% --exclude-module tkinter --onefile --noconsole  --hidden-import plyer.platforms.win.notification
-   Xcopy /E /I notifications electron_ui\python_build\notifications
+   Xcopy /E /I ..\notifications python_build\notifications
   displayName: 'Build Python Exe'
 
 - script: |

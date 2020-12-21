@@ -16,11 +16,15 @@ steps:
   displayName: 'Build Python Exe'
 
 - script: |
+   python unittests/test_version.py
+  displayName: 'Validate that all versions are updated'
+
+- script: |
    cd electron_ui
    echo "Current working directory is %CD%"
    npm install
    echo "Dependencies are installed"
-  displayName: 'Install Dependencies'
+  displayName: 'Install NodeJS Dependencies'
 
 - script: |
    cd electron_ui
